@@ -1,0 +1,3 @@
+[submodule "fireprime-protos"]
+	path = fireprime-protos
+	url = https://github.com/perfaram/fireprime-protos.git
