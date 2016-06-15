@@ -11,11 +11,6 @@ var LicenseMetadata = require('./license_checker').LicenseMetadata;
 // anything that it does not understand, such as the objc-specific macros.
 var messages = protobuf(fs.readFileSync('../fireprime-protos/license_js.proto'));
 
-// Little reminder of how to turn an hexadecimal representation (of a signing key, usually)
-// to a buffer, and reverse
-// hex2bin : new Buffer(key, "hex");
-// bin2hex : .toString('hex');
-
 // An object abstracting away all cryptography & serialization stuff. Instanciate one by passing a `seed`,
 // along with its encoding. See the README for more informations on obtaining a seed.
 function LicenseGenerator(seed, encoding) {
@@ -24,8 +19,8 @@ function LicenseGenerator(seed, encoding) {
         throw new Error('[LicenseGenerator] bad encoding. Must be: utf8|ascii|binary|hex|utf16le|ucs2|base64');
     }
 
-	var signpair = new sodium.Key.Sign.fromSeed(seed, encoding);
-	this.signer = new sodium.Sign(signpair);
+	this.signpair = new sodium.Key.Sign.fromSeed(seed, encoding);
+	this.signer = new sodium.Sign(this.signpair);
 }
 
 // The method for signing a LicenseMetadata object, using the seed passed when instanciating.
@@ -34,11 +29,13 @@ LicenseGenerator.prototype.signMetadata = function(metadata) {
 		throw new Error("Must pass LicenseMetadata object !");
 		return;
 	}
-	
+
 	var metaBuf = messages.Metadata.encode(metadata);
 
 	var sigBuf = this.signer.signDetached(metaBuf, "binary");
-	//console.log(sigBuf.sign.toString("hex"));
+
+	//var res = sodium.api.crypto_sign_verify_detached(sigBuf.sign, metaBuf, this.signpair.publicKey.baseBuffer);
+
 	var licenseBuf = messages.License.encode({
 		license: metadata,
 		signature: sigBuf.sign

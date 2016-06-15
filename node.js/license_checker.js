@@ -1,12 +1,16 @@
 var fs = require('fs');
 // License files are actually Protocol-Buffers-encoded.
-var protobuf = require('protocol-buffers');
+var protobuf = require('protobufjs');
+var builder = protobuf.loadProtoFile('../fireprime-protos/license_js.proto'),
+FirePrime = builder.build("FirePrime"),
+FPLicense = FirePrime.License,
+FPMetadata = FirePrime.Metadata;
 // Libsodium is used for all things crypto here.
 var sodium = require('sodium');
 var toBuffer = sodium.Utils.toBuffer;
 
-// Notice how a specific .proto file is used. This is because the protobuf module used here rejects
-// anything that it does not understand, such as the objc-specific macros.
+// License files are actually Protocol-Buffers-encoded.
+var protobuf = require('protocol-buffers');
 var messages = protobuf(fs.readFileSync('../fireprime-protos/license_js.proto'));
 
 // Little reminder of how to turn an hexadecimal representation (of a signing key, usually)
@@ -25,16 +29,16 @@ function LicenseMetadata(name, target, licenseId, created, email, company, insta
 	this.target = target;
 	this.licenseId = licenseId;
 	this.created = created;
-	if (email !== undefined) {
+	if (email !== undefined && email !== '') {
         this.email = email;
     }
-    if (company !== undefined) {
+    if (company !== undefined && company !== '') {
         this.company = company;
     }
     if (instances !== undefined) {
         this.instances = instances;
     }
-    if (orderId !== undefined) {
+    if (orderId !== undefined && orderId !== '') {
         this.orderId = orderId;
     }
 	return this;
@@ -46,20 +50,20 @@ function LicenseChecker(publicKey, encoding) {
 	this.publicKey = toBuffer(publicKey, encoding);
 }
 
-// The method for signing a LicenseMetadata object, using the seed passed when instanciating.
+// The method for validating a license buffer (e.g; directly read from a file), using the public key 
+// passed when instanciating.
 LicenseChecker.prototype.validate = function(buffer) {
 	if (Object.getPrototypeOf(buffer) !== Buffer.prototype) {
 		throw new Error("Must pass Buffer object !");
 		return;
 	}
 
-	var license = messages.License.decode(buffer);
-	var signature = license.signature;
-	var metaBuf = messages.Metadata.encode(license.license);
-	//console.log(this.publicKey.toString('hex'))
+	var license = FPLicense.decode(buffer);
+	var signature = license.signature.buffer.slice(license.signature.offset);
+	var mtd = license.license;
+	//mtd.created = mtd.created.low;
+	var metaBuf = messages.Metadata.encode(mtd);
 	var res = sodium.api.crypto_sign_verify_detached(signature, metaBuf, this.publicKey);
-	//console.log(metaBuf.toString('hex'));
-	//console.log(signature.toString('hex'));
 	return res;
 };
 
