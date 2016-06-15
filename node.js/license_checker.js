@@ -58,12 +58,17 @@ LicenseChecker.prototype.validate = function(buffer) {
 		return;
 	}
 
-	var license = FPLicense.decode(buffer);
-	var signature = license.signature.buffer.slice(license.signature.offset);
-	var mtd = license.license;
-	//mtd.created = mtd.created.low;
-	var metaBuf = messages.Metadata.encode(mtd);
-	var res = sodium.api.crypto_sign_verify_detached(signature, metaBuf, this.publicKey);
+	var license = messages.License.decode(buffer);
+	var metadata = license.license;
+	for (var i in metadata) {
+		if (metadata[i] === null || metadata[i] === undefined || metadata[i] == '' || metadata[i] == 0) {
+			delete metadata[i];
+		}
+	}
+	
+	var signatureBuffer = license.signature;
+	var metadataBuffer = messages.Metadata.encode(metadata);
+	var res = sodium.api.crypto_sign_verify_detached(signatureBuffer, metadataBuffer, this.publicKey);
 	return res;
 };
 
