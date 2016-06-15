@@ -2,8 +2,7 @@ var fs = require('fs');
 // License files are actually Protocol-Buffers-encoded.
 var protobuf = require('protocol-buffers');
 // Libsodium is used for all things crypto here.
-var sodium = require('sodium');
-var toBuffer = sodium.Utils.toBuffer;
+var sodium = require('sodium'), toBuffer = sodium.Utils.toBuffer;
 // Relies on the checker part for LicenseMetadata definition
 var LicenseMetadata = require('./license_checker').LicenseMetadata;
  
@@ -30,15 +29,13 @@ LicenseGenerator.prototype.signMetadata = function(metadata) {
 		return;
 	}
 
-	var metaBuf = messages.Metadata.encode(metadata);
+	var metadataBuf = messages.Metadata.encode(metadata);
 
-	var sigBuf = this.signer.signDetached(metaBuf, "binary");
-
-	//var res = sodium.api.crypto_sign_verify_detached(sigBuf.sign, metaBuf, this.signpair.publicKey.baseBuffer);
+	var signatureBuffer = this.signer.signDetached(metadataBuf, "binary");
 
 	var licenseBuf = messages.License.encode({
 		license: metadata,
-		signature: sigBuf.sign
+		signature: signatureBuffer.sign
 	});
 
 	return licenseBuf;
