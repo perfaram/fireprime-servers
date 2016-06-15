@@ -3,6 +3,9 @@ var fs = require('fs');
 var protobuf = require('protocol-buffers');
 // Libsodium is used for all things crypto here.
 var sodium = require('sodium');
+var toBuffer = sodium.Utils.toBuffer;
+// Relies on the checker part for LicenseMetadata definition
+var LicenseMetadata = require('./license_checker').LicenseMetadata;
  
 // Notice how a specific .proto file is used. This is because the protobuf module used here rejects
 // anything that it does not understand, such as the objc-specific macros.
@@ -12,24 +15,6 @@ var messages = protobuf(fs.readFileSync('../fireprime-protos/license_js.proto'))
 // to a buffer, and reverse
 // hex2bin : new Buffer(key, "hex");
 // bin2hex : .toString('hex');
-
-// An object representing a license's metadata, such as the end user's name, the app it will be used 
-// for, etc... See README for more informations about the parameters here
-function LicenseMetadata(name, target, licenseId, created, email, company, instances, orderId) {
-	if (!name || !target || !licenseId || !created) {
-		throw new Error("Argument `name`, `target`, `licenseId`, and `created` are required");
-		return;
-	}
-	this.name = name;
-	this.target = target;
-	this.licenseId = licenseId;
-	this.created = created;
-	this.email = email || null;
-	this.company = company || null;
-	this.instances = instances || null;
-	this.orderId = orderId || null;
-	return this;
-}
 
 // An object abstracting away all cryptography & serialization stuff. Instanciate one by passing a `seed`,
 // along with its encoding. See the README for more informations on obtaining a seed.
@@ -49,20 +34,11 @@ LicenseGenerator.prototype.signMetadata = function(metadata) {
 		throw new Error("Must pass LicenseMetadata object !");
 		return;
 	}
-
-	var metaBuf = messages.Metadata.encode({
-	 	name : metadata.name,
-		target : metadata.target,
-		licenseId : metadata.licenseId,
-		created : metadata.created,
-		email : metadata.email,
-		company : metadata.company,
-		instances : metadata.instances,
-		orderId : metadata.orderId
-	});
+	
+	var metaBuf = messages.Metadata.encode(metadata);
 
 	var sigBuf = this.signer.signDetached(metaBuf, "binary");
-
+	//console.log(sigBuf.sign.toString("hex"));
 	var licenseBuf = messages.License.encode({
 		license: metadata,
 		signature: sigBuf.sign
@@ -71,5 +47,4 @@ LicenseGenerator.prototype.signMetadata = function(metadata) {
 	return licenseBuf;
 };
 
-exports.LicenseMetadata = LicenseMetadata;
 exports.LicenseGenerator = LicenseGenerator;
